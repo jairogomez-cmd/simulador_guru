@@ -117,7 +117,7 @@
         body: JSON.stringify({ sessionId, message, clientType: selectedClient, isNew })
       });
       const data = await res.json();
-      return data.response || data.text || data.output || '(sin respuesta)';
+      return data;
     } catch(e) {
       return '⚠️ Error conectando con n8n. Verifica que el workflow esté activo.';
     }
@@ -138,3 +138,4 @@
 </script>
 </body>
 </html>
+
