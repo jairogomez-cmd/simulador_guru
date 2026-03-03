@@ -38,7 +38,6 @@
     <h1>🎯 Simulador de Ventas</h1>
     <p>Gurú Soluciones — Entrenamiento de Vendedores</p>
   </div>
-
   <div class="setup" id="setup">
     <h2>¿Con qué cliente quieres practicar?</h2>
     <div class="client-grid">
@@ -51,7 +50,6 @@
     </div>
     <button class="start-btn" id="startBtn" onclick="startSimulation()">🚀 Iniciar Simulación</button>
   </div>
-
   <div class="chat-area hidden" id="chatArea"></div>
   <div class="typing hidden" id="typing">El cliente está escribiendo...</div>
   <div class="input-area hidden" id="inputArea">
@@ -59,10 +57,8 @@
     <button class="send-btn" onclick="sendMessage()">➤</button>
   </div>
 </div>
-
 <script>
   const WEBHOOK_URL = 'https://n8n.srv1005169.hstgr.cloud/webhook/simulador_guru';
-
   let sessionId = 'session_' + Date.now();
   let selectedClient = null;
 
@@ -78,9 +74,7 @@
     document.getElementById('chatArea').classList.remove('hidden');
     document.getElementById('typing').classList.remove('hidden');
     document.getElementById('inputArea').classList.remove('hidden');
-
     addMessage('system', `Simulación iniciada — Cliente: <strong>${selectedClient.toUpperCase()}</strong><br><small>Escribe <strong>FIN</strong> al terminar para recibir tu retroalimentación</small>`);
-
     const response = await callWebhook('Hola, buenas tardes.', true);
     document.getElementById('typing').classList.add('hidden');
     addMessage('client', response);
@@ -91,13 +85,10 @@
     const msg = input.value.trim();
     if (!msg) return;
     input.value = '';
-
     addMessage('vendor', msg);
     document.getElementById('typing').classList.remove('hidden');
-
     const response = await callWebhook(msg, false);
     document.getElementById('typing').classList.add('hidden');
-
     if (msg.toUpperCase() === 'FIN') {
       addMessage('feedback', response);
       document.getElementById('inputArea').classList.add('hidden');
@@ -111,13 +102,16 @@
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'text/plain'
-        },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ sessionId, message, clientType: selectedClient, isNew })
       });
-      const data = await res.json();
-      return typeof data === 'string' ? data : (data.response || data.text || data.output || JSON.stringify(data));
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        return data.response || data.text || data.output || text;
+      } catch {
+        return text;
+      }
     } catch(e) {
       return '⚠️ Error conectando con n8n. Verifica que el workflow esté activo.';
     }
@@ -138,5 +132,3 @@
 </script>
 </body>
 </html>
-
-
