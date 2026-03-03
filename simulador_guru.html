@@ -55,7 +55,7 @@
   <div class="chat-area hidden" id="chatArea"></div>
   <div class="typing hidden" id="typing">El cliente está escribiendo...</div>
   <div class="input-area hidden" id="inputArea">
-    <input type="text" id="msgInput" placeholder="Escribe tu mensaje... (FIN para terminar y recibir retroalimentación)" onkeypress="handleKey(event)"/>
+    <input type="text" id="msgInput" placeholder="Escribe tu mensaje... (FIN para terminar)" onkeypress="handleKey(event)"/>
     <button class="send-btn" onclick="sendMessage()">➤</button>
   </div>
 </div>
@@ -111,7 +111,9 @@
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'text/plain'
+        },
         body: JSON.stringify({ sessionId, message, clientType: selectedClient, isNew })
       });
       const data = await res.json();
