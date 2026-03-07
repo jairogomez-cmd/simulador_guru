@@ -1149,6 +1149,7 @@ body::before {
 const SUPABASE_URL = 'https://dhyzfnxygadkkniubrge.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NPuPMXW3jnBaRJJ-tLuQrg_SMe7QRX6';
 const RETELL_AGENT_ID = 'agent_1bc5bb582accc4feb2819b3a4b';
+const RETELL_API_KEY = 'key_8c8a4daa33cd99a0cd349f71de1a';
 const SUPERVISOR_EMAIL = 'jairo.gomez@gurusoluciones.com';
 const SUPERVISOR_NAME = 'Jairo Gómez';
 
@@ -1468,6 +1469,8 @@ async function startPractice() {
   loadRetellWidget();
 }
 
+let retellClient = null;
+
 function loadRetellWidget() {
   const container = document.getElementById('retell-container');
   container.innerHTML = `
@@ -1476,59 +1479,75 @@ function loadRetellWidget() {
       <p style="color:rgba(255,255,255,0.7); margin-bottom:16px; font-size:15px;">
         El cliente <strong style="color:white;">${currentSession.client.name}</strong> está esperando tu saludo
       </p>
-      <button onclick="openRetellCall()" style="background:var(--accent); color:white; border:none; border-radius:12px; padding:14px 28px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer;">
+      <button onclick="openRetellCall()" id="btn-connect" style="background:var(--accent); color:white; border:none; border-radius:12px; padding:14px 28px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer;">
         📞 Conectar llamada
       </button>
     </div>`;
 }
 
-function openRetellCall() {
-  // Open Retell web call in the same page
+async function openRetellCall() {
+  const btn = document.getElementById('btn-connect');
+  if (btn) { btn.textContent = '⏳ Conectando...'; btn.disabled = true; }
   const container = document.getElementById('retell-container');
 
-  // Create Retell web embed
-  const agentId = RETELL_AGENT_ID;
-
-  container.innerHTML = `
-    <div style="text-align:center; width:100%;">
-      <div style="color:rgba(255,255,255,0.7); font-size:14px; margin-bottom:12px;">
-        🔴 En llamada con ${currentSession.client.name}
-      </div>
-      <retell-widget
-        agent-id="${agentId}"
-        style="width:100%; min-height:120px;">
-      </retell-widget>
-      <p style="color:rgba(255,255,255,0.5); font-size:12px; margin-top:12px;">
-        Si el widget no carga, usa el botón de prueba de Retell directamente
-      </p>
-      <a href="https://dashboard.retellai.com/agents" target="_blank" style="color:rgba(255,255,255,0.6); font-size:13px;">
-        Abrir en Retell →
-      </a>
-    </div>`;
-
-  // Try to load Retell SDK
-  if (!document.getElementById('retell-sdk')) {
-    const script = document.createElement('script');
-    script.id = 'retell-sdk';
-    script.src = 'https://cdn.retellai.com/sdk/web/v2/retell-web-client.js';
-    script.onload = () => initRetellSDK();
-    document.head.appendChild(script);
-  } else {
-    initRetellSDK();
-  }
-}
-
-function initRetellSDK() {
   try {
-    if (window.RetellWebClient) {
-      const retell = new window.RetellWebClient();
-      retell.startCall({
-        agentId: RETELL_AGENT_ID,
-        enableUpdate: true
+    const resp = await fetch('https://api.retellai.com/v2/create-web-call', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RETELL_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        agent_id: RETELL_AGENT_ID,
+        metadata: {
+          vendor_name: currentProfile?.full_name || '',
+          vendor_email: currentUser?.email || '',
+          product: currentSession?.product || '',
+          client_name: currentSession?.client?.name || ''
+        }
+      })
+    });
+
+    const data = await resp.json();
+    if (!data.access_token) throw new Error('No token: ' + JSON.stringify(data));
+    if (currentSession) currentSession.retellCallId = data.call_id;
+
+    container.innerHTML = `
+      <div style="text-align:center; width:100%;">
+        <div style="font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:16px;">🔴 En llamada con <strong style="color:white">${currentSession.client.name}</strong></div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:5px; height:44px; margin-bottom:14px;">
+          <div style="width:5px; height:20px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0s infinite alternate;"></div>
+          <div style="width:5px; height:32px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.1s infinite alternate;"></div>
+          <div style="width:5px; height:16px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.2s infinite alternate;"></div>
+          <div style="width:5px; height:36px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.3s infinite alternate;"></div>
+          <div style="width:5px; height:24px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.4s infinite alternate;"></div>
+        </div>
+        <style>@keyframes b{from{transform:scaleY(0.4)}to{transform:scaleY(1)}}</style>
+        <p style="color:rgba(255,255,255,0.5); font-size:13px;">Habla ahora — el cliente te escucha 🎙️</p>
+      </div>`;
+
+    if (!window.RetellWebClient) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/retell-client-js-sdk@latest/dist/index.umd.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
       });
     }
+    retellClient = new window.RetellWebClient();
+    await retellClient.startCall({ accessToken: data.access_token });
+
   } catch(e) {
-    console.log('Retell SDK:', e);
+    console.error('Retell:', e);
+    container.innerHTML = `
+      <div style="text-align:center; width:100%;">
+        <p style="color:#fca5a5; font-size:14px; margin-bottom:12px;">⚠️ Error de conexión de audio</p>
+        <a href="https://dashboard.retellai.com/agents" target="_blank"
+           style="background:var(--accent); color:white; text-decoration:none; border-radius:10px; padding:12px 24px; font-weight:700; font-size:14px; display:inline-block;">
+          🎙️ Abrir Retell para llamar →
+        </a>
+        <p style="color:rgba(255,255,255,0.4); font-size:11px; margin-top:10px;">Cuando termines, regresa y haz clic en "Finalizar sesión"</p>
+      </div>`;
   }
 }
 
