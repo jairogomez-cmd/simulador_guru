@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gurú Coach SPIN — Entrenador de Vendedores</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --card: #fafaf8;
+  --border: #e8e6e0;
+  --accent: #ff4500;
+  --accent2: #1a1a2e;
+  --green: #16a34a;
+  --red: #dc2626;
+  --yellow: #d97706;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --light: #f3f4f6;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── PATTERNS ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 400px;
+  background: var(--accent2);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 0 100%);
+  z-index: 0;
+}
+
+.app { position: relative; z-index: 1; }
+
+/* ── LOGIN ── */
+#login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 24px;
+  padding: 48px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.15);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.login-logo .brand {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.login-logo .brand span { color: var(--accent); }
+
+.login-logo p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 13px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--accent);
+}
+
+.btn-login {
+  width: 100%;
+  background: var(--accent2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.btn-login:hover { background: #2d2d4e; transform: translateY(-1px); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.btn-register {
+  width: 100%;
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-register:hover { background: rgba(255,69,0,0.05); }
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.alert.error { background: #fef2f2; border: 1px solid #fecaca; color: var(--red); }
+.alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--green); }
+
+/* ── REGISTER FORM ── */
+#register-form { display: none; }
+
+/* ── MAIN APP ── */
+#main-app { display: none; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--accent2);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-brand {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.5px;
+}
+
+.topbar-brand span { color: var(--accent); }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+}
+
+.user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: white;
+  font-size: 14px;
+}
+
+.btn-logout {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+/* ── NAV TABS ── */
+.nav-tabs {
+  background: var(--accent2);
+  padding: 0 32px;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.nav-tab {
+  padding: 12px 20px;
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+
+.nav-tab:hover { color: rgba(255,255,255,0.9); }
+.nav-tab.active { color: white; border-bottom-color: var(--accent); }
+
+/* ── CONTENT ── */
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+}
+
+/* ── SECTION ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── HERO STATS ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+.stat-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card.green::before { background: var(--green); }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-card.yellow::before { background: var(--yellow); }
+.stat-card.yellow .stat-value { color: var(--yellow); }
+.stat-card.red::before { background: var(--red); }
+.stat-card.red .stat-value { color: var(--red); }
+
+/* ── SECTION TITLE ── */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  letter-spacing: -0.3px;
+}
+
+/* ── PRACTICE SECTION ── */
+.practice-setup {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 600px) { .setup-grid { grid-template-columns: 1fr; } }
+
+.btn-start {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 16px 36px;
+  font-family: 'Syne', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(255,69,0,0.3);
+}
+
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,69,0,0.4); }
+.btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── CALL WIDGET ── */
+#call-widget { display: none; }
+
+.call-card {
+  background: var(--accent2);
+  border-radius: 20px;
+  padding: 32px;
+  color: white;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.call-card::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -50px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+
+.call-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.client-info-call {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.client-avatar-call {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+
+.client-name-call {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.client-desc-call {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 2px;
+}
+
+.call-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+}
+
+.status-indicator {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── RETELL WIDGET CONTAINER ── */
+#retell-container {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 24px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-hint {
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  text-align: center;
+}
+
+.btn-end-call {
+  background: rgba(239,68,68,0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-end-call:hover { background: rgba(239,68,68,0.3); }
+
+/* ── SPIN TIPS ── */
+.spin-tips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 700px) { .spin-tips { grid-template-columns: 1fr 1fr; } }
+
+.spin-tip {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 13px;
+}
+
+.spin-tip-label {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.spin-tip.s .spin-tip-label { color: #2563eb; }
+.spin-tip.p .spin-tip-label { color: #dc2626; }
+.spin-tip.i .spin-tip-label { color: #d97706; }
+.spin-tip.n .spin-tip-label { color: #16a34a; }
+
+/* ── HISTORY TABLE ── */
+.history-card {
+  background: white;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.history-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.history-table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-table tr:last-child td { border-bottom: none; }
+.history-table tr:hover td { background: var(--bg); }
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 28px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.score-badge.good { background: #dcfce7; color: var(--green); }
+.score-badge.avg { background: #fef3c7; color: var(--yellow); }
+.score-badge.bad { background: #fee2e2; color: var(--red); }
+
+/* ── PROGRESS CHARTS ── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+}
+
+.chart-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+/* ── SPIN RADAR ── */
+.spin-bars { display: flex; flex-direction: column; gap: 10px; }
+
+.spin-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spin-bar-label {
+  font-size: 12px;
+  font-weight: 700;
+  width: 120px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.spin-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.spin-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.8s ease;
+}
+
+.spin-bar-value {
+  font-size: 13px;
+  font-weight: 700;
+  width: 32px;
+  text-align: right;
+}
+
+/* ── SUPERVISOR ── */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.vendor-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vendor-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.vendor-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vendor-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: white;
+  font-size: 16px;
+}
+
+.vendor-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.vendor-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.vendor-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.vendor-stat {
+  text-align: center;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.vendor-stat-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.vendor-stat-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.modal-subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: var(--bg);
+  border: none;
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── FEEDBACK CARD ── */
+.feedback-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.fb-score {
+  text-align: center;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.fb-score-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.fb-score-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.fb-section {
+  margin-bottom: 16px;
+}
+
+.fb-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fb-section-title.green { color: var(--green); }
+.fb-section-title.red { color: var(--red); }
+.fb-section-title.yellow { color: var(--yellow); }
+
+.fb-text {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px;
+  color: var(--muted);
+}
+
+.loading-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: ldot 1.4s infinite;
+}
+
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ldot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
+}
+
+.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; }
+
+/* ── TREND ARROW ── */
+.trend-up { color: var(--green); }
+.trend-down { color: var(--red); }
+.trend-flat { color: var(--muted); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .topbar { padding: 0 16px; }
+  .nav-tabs { padding: 0 16px; overflow-x: auto; }
+  .content { padding: 20px 16px 60px; }
+  .login-card { padding: 32px 24px; }
+  .feedback-scores { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── TAG ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag.supervisor { background: #ede9fe; color: #7c3aed; }
+.tag.vendedor { background: #dbeafe; color: #1d4ed8; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand"><span>gurú</span> Coach SPIN</div>
+      <p>Entrenador de Vendedores con IA</p>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="tu@gurusoluciones.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn-login" onclick="handleLogin()">Ingresar →</button>
+      <div id="login-alert"></div>
+      <div class="divider">¿Primera vez?</div>
+      <button class="btn-register" onclick="showRegister()">Crear cuenta nueva</button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="reg-name" placeholder="Juan Pérez">
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="reg-email" placeholder="tu@gurusoluciones.com">
+      </div>
+      <div class="form-group">
+        <label>País</label>
+        <select id="reg-country">
+          <option value="">Selecciona tu país</option>
+          <option value="Argentina">🇦🇷 Argentina</option>
+          <option value="Chile">🇨🇱 Chile</option>
+          <option value="Colombia">🇨🇴 Colombia</option>
+          <option value="Perú">🇵🇪 Perú</option>
+          <option value="Ecuador">🇪🇨 Ecuador</option>
+          <option value="Panamá">🇵🇦 Panamá</option>
+          <option value="Guatemala">🇬🇹 Guatemala</option>
+          <option value="El Salvador">🇸🇻 El Salvador</option>
+          <option value="Nicaragua">🇳🇮 Nicaragua</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="reg-password" placeholder="Mínimo 8 caracteres">
+      </div>
+      <button class="btn-login" onclick="handleRegister()">Crear cuenta →</button>
+      <div id="register-alert"></div>
+      <div class="divider">¿Ya tienes cuenta?</div>
+      <button class="btn-register" onclick="showLogin()">Iniciar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════════ -->
+<div id="main-app">
+  <div class="topbar">
+    <div class="topbar-brand"><span>gurú</span> Coach SPIN</div>
+    <div class="topbar-right">
+      <div class="topbar-user">
+        <div class="user-avatar" id="user-avatar-top">J</div>
+        <span id="user-name-top">Usuario</span>
+        <span class="tag" id="user-role-tag">vendedor</span>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('dashboard')" data-section="dashboard">📊 Mi Dashboard</button>
+    <button class="nav-tab" onclick="showSection('practice')" data-section="practice">🎙️ Practicar</button>
+    <button class="nav-tab" onclick="showSection('history')" data-section="history">📋 Historial</button>
+    <button class="nav-tab supervisor-only" onclick="showSection('supervisor')" data-section="supervisor" style="display:none">👥 Equipo</button>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="section-dashboard" class="section active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-sessions">0</div>
+          <div class="stat-label">Sesiones totales</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-value" id="stat-avg">—</div>
+          <div class="stat-label">Promedio SPIN</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-value" id="stat-best">—</div>
+          <div class="stat-label">Mejor puntaje</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-trend">—</div>
+          <div class="stat-label">Tendencia</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Puntajes SPIN promedio</div>
+          <div class="spin-bars" id="spin-bars">
+            <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Últimas 5 sesiones</div>
+          <div id="mini-history">
+            <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">💡 Áreas de mejora recientes</div>
+      <div id="improvement-area" class="history-card" style="padding:24px;">
+        <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+      </div>
+    </div>
+
+    <!-- PRACTICE -->
+    <div id="section-practice" class="section">
+      <div class="section-title">🎙️ Nueva sesión de práctica</div>
+
+      <div class="spin-tips">
+        <div class="spin-tip s">
+          <div class="spin-tip-label">S — Situación</div>
+          <div>Pregunta sobre el negocio actual del cliente</div>
+        </div>
+        <div class="spin-tip p">
+          <div class="spin-tip-label">P — Problema</div>
+          <div>Descubre sus dolores y dificultades reales</div>
+        </div>
+        <div class="spin-tip i">
+          <div class="spin-tip-label">I — Implicación</div>
+          <div>Explora las consecuencias de no resolver</div>
+        </div>
+        <div class="spin-tip n">
+          <div class="spin-tip-label">N — Necesidad</div>
+          <div>Conecta la solución gurú con su necesidad</div>
+        </div>
+      </div>
+
+      <div class="practice-setup" id="setup-card">
+        <div class="section-title" style="font-size:17px; margin-bottom:20px;">Configurar simulación</div>
+        <div class="setup-grid">
+          <div class="form-group">
+            <label>Producto a practicar</label>
+            <select id="practice-product">
+              <option value="gurú Go">gurú Go — Presencia digital completa</option>
+              <option value="Página Web">Página Web profesional</option>
+              <option value="Redes Sociales">Gestión de Redes Sociales</option>
+              <option value="Campaña Digital">Campaña Digital (Google/Facebook)</option>
+              <option value="Tienda Online">Tienda Online</option>
+              <option value="gurú Conecta">gurú Conecta (CRM + Luna IA)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Dificultad del cliente</label>
+            <select id="practice-difficulty">
+              <option value="facil">😊 Fácil — cliente receptivo</option>
+              <option value="medio" selected>🤔 Medio — tiene objeciones</option>
+              <option value="dificil">😤 Difícil — muy escéptico</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-start" onclick="startPractice()">
+          🎙️ Iniciar simulación con cliente IA
+        </button>
+      </div>
+
+      <!-- CALL WIDGET -->
+      <div id="call-widget">
+        <div class="call-card">
+          <div class="call-header">
+            <div class="client-info-call">
+              <div class="client-avatar-call" id="call-avatar">👤</div>
+              <div>
+                <div class="client-name-call" id="call-client-name">Cliente</div>
+                <div class="client-desc-call" id="call-client-desc">Esperando...</div>
+              </div>
+            </div>
+            <div class="call-status">
+              <div class="status-indicator"></div>
+              Llamada activa
+            </div>
+          </div>
+
+          <div id="retell-container">
+            <div class="voice-hint">
+              🎙️ Presiona el botón de abajo para hablar con el cliente<br>
+              <small>El cliente espera tu saludo primero</small>
+            </div>
+          </div>
+
+          <button class="btn-end-call" onclick="endCall()">
+            🏁 Finalizar sesión y ver feedback
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="section-history" class="section">
+      <div class="section-title">📋 Historial de sesiones</div>
+      <div class="history-card">
+        <div class="history-header">
+          <span id="history-count" style="font-size:14px; color:var(--muted)">Cargando...</span>
+          <button onclick="loadHistory()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 14px; font-size:13px; cursor:pointer; font-family:inherit;">🔄 Actualizar</button>
+        </div>
+        <div id="history-body">
+          <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPERVISOR -->
+    <div id="section-supervisor" class="section">
+      <div class="section-title">👥 Desempeño del equipo</div>
+      <div class="stats-grid" id="team-stats">
+        <div class="stat-card"><div class="stat-value" id="team-total-sessions">—</div><div class="stat-label">Sesiones del equipo</div></div>
+        <div class="stat-card green"><div class="stat-value" id="team-avg-score">—</div><div class="stat-label">Promedio general</div></div>
+        <div class="stat-card yellow"><div class="stat-value" id="team-active-vendors">—</div><div class="stat-label">Vendedores activos</div></div>
+        <div class="stat-card red"><div class="stat-value" id="team-need-help">—</div><div class="stat-label">Necesitan apoyo</div></div>
+      </div>
+      <div class="section-title" style="font-size:17px;">Vendedores</div>
+      <div class="vendor-grid" id="vendor-grid">
+        <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <div class="modal-title" id="modal-title">Detalle de sesión</div>
+    <div class="modal-subtitle" id="modal-subtitle"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const SUPABASE_URL = 'https://dhyzfnxygadkkniubrge.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NPuPMXW3jnBaRJJ-tLuQrg_SMe7QRX6';
+const RETELL_AGENT_ID = 'agent_1bc5bb582accc4feb2819b3a4b';
+const SUPERVISOR_EMAIL = 'jairo.gomez@gurusoluciones.com';
+const SUPERVISOR_NAME = 'Jairo Gómez';
+
+// Init Supabase
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// State
+let currentUser = null;
+let currentProfile = null;
+let currentSession = null;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.onload = async () => {
+  await initDB();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
+    showApp();
+  }
+};
+
+async function initDB() {
+  // Create tables via RPC if not exists
+  // Tables are created in Supabase dashboard
+  // This just verifies connection
+  try {
+    await sb.from('profiles').select('id').limit(1);
+  } catch(e) {
+    // Table might not exist yet, will be created
+  }
+}
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) {
+    showAlert('login-alert', 'Completa todos los campos', 'error');
+    return;
+  }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    showAlert('login-alert', 'Credenciales incorrectas. Verifica tu correo y contraseña.', 'error');
+    return;
+  }
+
+  await loadUserProfile(data.user);
+  showApp();
+}
+
+async function handleRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const country = document.getElementById('reg-country').value;
+  const password = document.getElementById('reg-password').value;
+
+  if (!name || !email || !country || !password) {
+    showAlert('register-alert', 'Completa todos los campos', 'error');
+    return;
+  }
+
+  if (password.length < 8) {
+    showAlert('register-alert', 'La contraseña debe tener mínimo 8 caracteres', 'error');
+    return;
+  }
+
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) {
+    showAlert('register-alert', error.message, 'error');
+    return;
+  }
+
+  if (data.user) {
+    // Create profile
+    const isSupervisor = email === SUPERVISOR_EMAIL;
+    await sb.from('profiles').upsert({
+      id: data.user.id,
+      full_name: name,
+      email,
+      country,
+      role: isSupervisor ? 'supervisor' : 'vendedor',
+      created_at: new Date().toISOString()
+    });
+
+    await loadUserProfile(data.user);
+    showApp();
+  }
+}
+
+async function loadUserProfile(user) {
+  currentUser = user;
+  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (data) {
+    currentProfile = data;
+  } else {
+    // Create profile if doesn't exist
+    const isSupervisor = user.email === SUPERVISOR_EMAIL;
+    const profile = {
+      id: user.id,
+      full_name: user.email.split('@')[0],
+      email: user.email,
+      country: 'Colombia',
+      role: isSupervisor ? 'supervisor' : 'vendedor',
+      created_at: new Date().toISOString()
+    };
+    await sb.from('profiles').upsert(profile);
+    currentProfile = profile;
+  }
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  showLogin();
+}
+
+// ═══════════════════════════════════════════════
+// UI NAVIGATION
+// ═══════════════════════════════════════════════
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+
+  // Set user info
+  const name = currentProfile?.full_name || currentUser?.email || 'Usuario';
+  const initials = name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('user-avatar-top').textContent = initials;
+  document.getElementById('user-name-top').textContent = name.split(' ')[0];
+  document.getElementById('user-role-tag').textContent = currentProfile?.role || 'vendedor';
+  document.getElementById('user-role-tag').className = `tag ${currentProfile?.role || 'vendedor'}`;
+
+  // Show supervisor tab if supervisor
+  if (currentProfile?.role === 'supervisor') {
+    document.querySelectorAll('.supervisor-only').forEach(el => el.style.display = 'block');
+  }
+
+  loadDashboard();
+}
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`section-${name}`)?.classList.add('active');
+  document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'history') loadHistory();
+  if (name === 'supervisor') loadSupervisor();
+}
+
+function showLogin() {
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('register-form').style.display = 'none';
+}
+
+function showRegister() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+async function loadDashboard() {
+  if (!currentUser) return;
+
+  const { data: sessions } = await sb
+    .from('training_sessions')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (!sessions || sessions.length === 0) {
+    document.getElementById('stat-sessions').textContent = '0';
+    document.getElementById('spin-bars').innerHTML = '<div class="empty-state"><div class="emoji">🎙️</div><p>Haz tu primera práctica</p></div>';
+    document.getElementById('mini-history').innerHTML = '<div class="empty-state"><div class="emoji">📋</div><p>Sin sesiones aún</p></div>';
+    document.getElementById('improvement-area').innerHTML = '<div class="empty-state"><div class="emoji">💡</div><p>Completa una sesión para ver recomendaciones</p></div>';
+    return;
+  }
+
+  // Stats
+  const total = sessions.length;
+  const scores = sessions.map(s => s.puntaje_total).filter(Boolean);
+  const avg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : 0;
+  const best = scores.length ? Math.max(...scores) : 0;
+
+  // Trend (last 3 vs previous 3)
+  let trend = '—';
+  if (scores.length >= 4) {
+    const recent = scores.slice(0, 3).reduce((a,b) => a+b, 0) / 3;
+    const prev = scores.slice(3, 6).reduce((a,b) => a+b, 0) / Math.min(3, scores.slice(3,6).length);
+    const diff = recent - prev;
+    trend = diff > 2 ? '📈 +' + Math.round(diff) : diff < -2 ? '📉 ' + Math.round(diff) : '➡️ Estable';
+  }
+
+  document.getElementById('stat-sessions').textContent = total;
+  document.getElementById('stat-avg').textContent = avg + '/100';
+  document.getElementById('stat-best').textContent = best + '/100';
+  document.getElementById('stat-trend').textContent = trend;
+
+  // SPIN bars
+  const spinFields = [
+    { key: 'spin_situacion', label: 'S — Situación' },
+    { key: 'spin_problema', label: 'P — Problema' },
+    { key: 'spin_implicacion', label: 'I — Implicación' },
+    { key: 'spin_necesidad', label: 'N — Necesidad' },
+    { key: 'manejo_objeciones', label: 'Objeciones' },
+    { key: 'cierre', label: 'Cierre' },
+  ];
+
+  const spinHTML = spinFields.map(f => {
+    const vals = sessions.map(s => s[f.key]).filter(v => v !== null && v !== undefined);
+    const avg = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1) : 0;
+    const pct = (avg / 10) * 100;
+    const color = avg >= 7 ? 'var(--green)' : avg >= 5 ? 'var(--yellow)' : 'var(--red)';
+    return `
+      <div class="spin-bar-row">
+        <div class="spin-bar-label">${f.label}</div>
+        <div class="spin-bar-track">
+          <div class="spin-bar-fill" style="width:${pct}%; background:${color}"></div>
+        </div>
+        <div class="spin-bar-value" style="color:${color}">${avg}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('spin-bars').innerHTML = spinHTML;
+
+  // Mini history (last 5)
+  const last5 = sessions.slice(0, 5);
+  const miniHTML = last5.map(s => {
+    const score = s.puntaje_total || 0;
+    const cls = score >= 70 ? 'good' : score >= 50 ? 'avg' : 'bad';
+    const date = new Date(s.created_at).toLocaleDateString('es', { day:'2-digit', month:'short' });
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:13px; font-weight:600;">${s.product || 'Práctica'}</div>
+          <div style="font-size:11px; color:var(--muted);">${date}</div>
+        </div>
+        <span class="score-badge ${cls}">${score}</span>
+      </div>`;
+  }).join('');
+
+  document.getElementById('mini-history').innerHTML = miniHTML || '<div class="empty-state"><p>Sin sesiones</p></div>';
+
+  // Improvement area (last session)
+  const last = sessions[0];
+  if (last && last.areas_mejora) {
+    document.getElementById('improvement-area').innerHTML = `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:6px;">Última sesión — ${new Date(last.created_at).toLocaleDateString('es')}</div>
+        <div class="fb-text" style="margin-bottom:10px;">❌ ${last.areas_mejora}</div>
+        ${last.recomendaciones ? `<div class="fb-text">💡 ${last.recomendaciones}</div>` : ''}
+      </div>`;
+  } else {
+    document.getElementById('improvement-area').innerHTML = '<div class="empty-state"><p>Completa una sesión para ver recomendaciones</p></div>';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PRACTICE
+// ═══════════════════════════════════════════════
+const clientProfiles = {
+  Argentina: ['Marcelo Fernández', 'Claudia Gómez', 'Roberto Sánchez'],
+  Chile: ['Rodrigo Muñoz', 'Catalina Pérez', 'Felipe Morales'],
+  Colombia: ['Andrés Rodríguez', 'Paola García', 'Carlos Martínez'],
+  Perú: ['José Quispe', 'Carmen Flores', 'Luis Mendoza'],
+  Ecuador: ['Pablo Mora', 'Gabriela Espinoza', 'Miguel Herrera'],
+  Panamá: ['Tomás Núñez', 'Lorena Díaz', 'Ricardo Pinto'],
+  Guatemala: ['Juan Ajú', 'María Revolorio', 'Carlos Chávez'],
+  'El Salvador': ['Óscar Rivas', 'Teresa Aguilar', 'Ernesto Fuentes'],
+  Nicaragua: ['Luis Centeno', 'Miriam Ortega', 'Rodrigo Espino']
+};
+
+const businessTypes = ['Restaurante', 'Clínica', 'Tienda de ropa', 'Ferretería', 'Gimnasio', 'Peluquería', 'Inmobiliaria', 'Farmacia'];
+const businessEmojis = { 'Restaurante':'🍽', 'Clínica':'🏥', 'Tienda de ropa':'👗', 'Ferretería':'🔧', 'Gimnasio':'💪', 'Peluquería':'✂️', 'Inmobiliaria':'🏠', 'Farmacia':'💊' };
+
+function generateClient() {
+  const countries = Object.keys(clientProfiles);
+  const country = countries[Math.floor(Math.random() * countries.length)];
+  const names = clientProfiles[country];
+  const name = names[Math.floor(Math.random() * names.length)];
+  const business = businessTypes[Math.floor(Math.random() * businessTypes.length)];
+  return { name, country, business, emoji: businessEmojis[business] || '👤' };
+}
+
+async function startPractice() {
+  const product = document.getElementById('practice-product').value;
+  const difficulty = document.getElementById('practice-difficulty').value;
+  const client = generateClient();
+
+  currentSession = {
+    product,
+    difficulty,
+    client,
+    startTime: new Date()
+  };
+
+  // Show call widget
+  document.getElementById('setup-card').style.display = 'none';
+  document.getElementById('call-widget').style.display = 'block';
+  document.getElementById('call-avatar').textContent = client.emoji;
+  document.getElementById('call-client-name').textContent = client.name;
+  document.getElementById('call-client-desc').textContent = `${client.business} · ${client.country}`;
+
+  // Load Retell Web Call
+  loadRetellWidget();
+}
+
+function loadRetellWidget() {
+  const container = document.getElementById('retell-container');
+  container.innerHTML = `
+    <div style="text-align:center; width:100%;">
+      <div style="font-size:48px; margin-bottom:12px;">🎙️</div>
+      <p style="color:rgba(255,255,255,0.7); margin-bottom:16px; font-size:15px;">
+        El cliente <strong style="color:white;">${currentSession.client.name}</strong> está esperando tu saludo
+      </p>
+      <button onclick="openRetellCall()" style="background:var(--accent); color:white; border:none; border-radius:12px; padding:14px 28px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer;">
+        📞 Conectar llamada
+      </button>
+    </div>`;
+}
+
+function openRetellCall() {
+  // Open Retell web call in the same page
+  const container = document.getElementById('retell-container');
+
+  // Create Retell web embed
+  const agentId = RETELL_AGENT_ID;
+
+  container.innerHTML = `
+    <div style="text-align:center; width:100%;">
+      <div style="color:rgba(255,255,255,0.7); font-size:14px; margin-bottom:12px;">
+        🔴 En llamada con ${currentSession.client.name}
+      </div>
+      <retell-widget
+        agent-id="${agentId}"
+        style="width:100%; min-height:120px;">
+      </retell-widget>
+      <p style="color:rgba(255,255,255,0.5); font-size:12px; margin-top:12px;">
+        Si el widget no carga, usa el botón de prueba de Retell directamente
+      </p>
+      <a href="https://dashboard.retellai.com/agents" target="_blank" style="color:rgba(255,255,255,0.6); font-size:13px;">
+        Abrir en Retell →
+      </a>
+    </div>`;
+
+  // Try to load Retell SDK
+  if (!document.getElementById('retell-sdk')) {
+    const script = document.createElement('script');
+    script.id = 'retell-sdk';
+    script.src = 'https://cdn.retellai.com/sdk/web/v2/retell-web-client.js';
+    script.onload = () => initRetellSDK();
+    document.head.appendChild(script);
+  } else {
+    initRetellSDK();
+  }
+}
+
+function initRetellSDK() {
+  try {
+    if (window.RetellWebClient) {
+      const retell = new window.RetellWebClient();
+      retell.startCall({
+        agentId: RETELL_AGENT_ID,
+        enableUpdate: true
+      });
+    }
+  } catch(e) {
+    console.log('Retell SDK:', e);
+  }
+}
+
+async function endCall() {
+  if (!currentSession) return;
+
+  const duration = Math.round((new Date() - currentSession.startTime) / 60000);
+
+  // Save session to DB
+  const sessionData = {
+    user_id: currentUser.id,
+    product: currentSession.product,
+    difficulty: currentSession.difficulty,
+    client_name: currentSession.client.name,
+    client_country: currentSession.client.country,
+    client_business: currentSession.client.business,
+    duration_minutes: duration,
+    puntaje_total: null,
+    spin_situacion: null,
+    spin_problema: null,
+    spin_implicacion: null,
+    spin_necesidad: null,
+    manejo_objeciones: null,
+    cierre: null,
+    fortalezas: null,
+    areas_mejora: null,
+    recomendaciones: null,
+    call_summary: null,
+    call_successful: null,
+    user_sentiment: null,
+    created_at: new Date().toISOString()
+  };
+
+  const { data } = await sb.from('training_sessions').insert(sessionData).select().single();
+
+  // Show feedback modal (scores will come from Retell webhook)
+  showModal(
+    '✅ Sesión registrada',
+    `Duración: ${duration} minutos · Cliente: ${currentSession.client.name}`,
+    `
+    <div class="fb-text" style="margin-bottom:16px;">
+      ✅ Tu sesión ha sido registrada. Los puntajes SPIN aparecerán en tu historial en unos minutos cuando Retell procese el análisis post-llamada.
+    </div>
+    <div class="fb-text">
+      📧 Recibirás un email con tu feedback detallado en breve.
+    </div>
+    <div style="margin-top:20px; display:flex; gap:12px;">
+      <button onclick="closeModal(); showSection('history')" style="background:var(--accent); color:white; border:none; border-radius:10px; padding:12px 20px; font-family:inherit; font-weight:600; cursor:pointer; font-size:14px;">
+        Ver historial →
+      </button>
+      <button onclick="closeModal(); resetPractice()" style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 20px; font-family:inherit; cursor:pointer; font-size:14px;">
+        Nueva práctica
+      </button>
+    </div>`
+  );
+
+  resetPractice();
+  currentSession = null;
+}
+
+function resetPractice() {
+  document.getElementById('setup-card').style.display = 'block';
+  document.getElementById('call-widget').style.display = 'none';
+  document.getElementById('retell-container').innerHTML = '<div class="voice-hint">🎙️ Presiona el botón de abajo para hablar con el cliente</div>';
+}
+
+// ═══════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════
+async function loadHistory() {
+  if (!currentUser) return;
+
+  const { data: sessions } = await sb
+    .from('training_sessions')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  document.getElementById('history-count').textContent = `${sessions?.length || 0} sesiones registradas`;
+
+  if (!sessions || sessions.length === 0) {
+    document.getElementById('history-body').innerHTML = '<div class="empty-state"><div class="emoji">📋</div><p>No hay sesiones aún. ¡Haz tu primera práctica!</p></div>';
+    return;
+  }
+
+  const rows = sessions.map(s => {
+    const score = s.puntaje_total;
+    const cls = score >= 70 ? 'good' : score >= 50 ? 'avg' : 'bad';
+    const date = new Date(s.created_at).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' });
+    const successful = s.call_successful === true ? '✅' : s.call_successful === false ? '❌' : '—';
+
+    return `
+      <tr onclick="showSessionDetail('${s.id}')" style="cursor:pointer;">
+        <td><strong>${s.product || '—'}</strong></td>
+        <td>${s.client_name || '—'}<br><small style="color:var(--muted)">${s.client_country || ''}</small></td>
+        <td>${s.difficulty || '—'}</td>
+        <td>${s.duration_minutes || '—'} min</td>
+        <td>${score !== null ? `<span class="score-badge ${cls}">${score}</span>` : '—'}</td>
+        <td>${successful}</td>
+        <td style="color:var(--muted); font-size:13px;">${date}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('history-body').innerHTML = `
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cliente</th>
+          <th>Dificultad</th>
+          <th>Duración</th>
+          <th>Puntaje</th>
+          <th>Éxito</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function showSessionDetail(sessionId) {
+  const { data: s } = await sb.from('training_sessions').select('*').eq('id', sessionId).single();
+  if (!s) return;
+
+  const score = s.puntaje_total || 0;
+  const cls = score >= 70 ? 'good' : score >= 50 ? 'avg' : 'bad';
+
+  const spinFields = [
+    { key: 'spin_situacion', label: 'S — Situación' },
+    { key: 'spin_problema', label: 'P — Problema' },
+    { key: 'spin_implicacion', label: 'I — Implicación' },
+    { key: 'spin_necesidad', label: 'N — Necesidad' },
+    { key: 'manejo_objeciones', label: 'Objeciones' },
+    { key: 'cierre', label: 'Cierre' },
+  ];
+
+  const spinBars = spinFields.map(f => {
+    const val = s[f.key] || 0;
+    const pct = (val / 10) * 100;
+    const color = val >= 7 ? 'var(--green)' : val >= 5 ? 'var(--yellow)' : 'var(--red)';
+    return `
+      <div class="spin-bar-row" style="margin-bottom:8px;">
+        <div class="spin-bar-label" style="font-size:12px; width:110px;">${f.label}</div>
+        <div class="spin-bar-track"><div class="spin-bar-fill" style="width:${pct}%; background:${color}"></div></div>
+        <div class="spin-bar-value" style="color:${color}; font-size:13px;">${val}/10</div>
+      </div>`;
+  }).join('');
+
+  const body = `
+    <div class="feedback-scores">
+      <div class="fb-score"><div class="fb-score-val" style="color:${cls === 'good' ? 'var(--green)' : cls === 'avg' ? 'var(--yellow)' : 'var(--red)'}">${score}</div><div class="fb-score-label">Total</div></div>
+      <div class="fb-score"><div class="fb-score-val">${s.duration_minutes || '—'}</div><div class="fb-score-label">Minutos</div></div>
+      <div class="fb-score"><div class="fb-score-val">${s.call_successful ? '✅' : '❌'}</div><div class="fb-score-label">Exitosa</div></div>
+    </div>
+
+    <div style="margin-bottom:16px;">${spinBars}</div>
+
+    ${s.call_summary ? `<div class="fb-section"><div class="fb-section-title">📝 Resumen</div><div class="fb-text">${s.call_summary}</div></div>` : ''}
+    ${s.user_sentiment ? `<div class="fb-section"><div class="fb-section-title">😊 Sentimiento del cliente</div><div class="fb-text">${s.user_sentiment}</div></div>` : ''}
+    ${s.fortalezas ? `<div class="fb-section"><div class="fb-section-title green">✅ Fortalezas</div><div class="fb-text">${s.fortalezas}</div></div>` : ''}
+    ${s.areas_mejora ? `<div class="fb-section"><div class="fb-section-title red">❌ Áreas de mejora</div><div class="fb-text">${s.areas_mejora}</div></div>` : ''}
+    ${s.recomendaciones ? `<div class="fb-section"><div class="fb-section-title yellow">💡 Recomendaciones</div><div class="fb-text">${s.recomendaciones}</div></div>` : ''}
+  `;
+
+  showModal(
+    `${s.product || 'Sesión'}`,
+    `${s.client_name} · ${s.client_country} · ${new Date(s.created_at).toLocaleDateString('es')}`,
+    body
+  );
+}
+
+// ═══════════════════════════════════════════════
+// SUPERVISOR
+// ═══════════════════════════════════════════════
+async function loadSupervisor() {
+  if (currentProfile?.role !== 'supervisor') return;
+
+  // Get all profiles (vendors)
+  const { data: profiles } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('role', 'vendedor')
+    .order('full_name');
+
+  // Get all sessions
+  const { data: allSessions } = await sb
+    .from('training_sessions')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!profiles || !allSessions) return;
+
+  // Team stats
+  const scores = allSessions.map(s => s.puntaje_total).filter(Boolean);
+  const teamAvg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : 0;
+  const activeVendors = new Set(allSessions.map(s => s.user_id)).size;
+  const needHelp = profiles.filter(p => {
+    const pSessions = allSessions.filter(s => s.user_id === p.id);
+    const pScores = pSessions.map(s => s.puntaje_total).filter(Boolean);
+    const avg = pScores.length ? pScores.reduce((a,b) => a+b, 0) / pScores.length : 0;
+    return avg < 50 && pSessions.length > 0;
+  }).length;
+
+  document.getElementById('team-total-sessions').textContent = allSessions.length;
+  document.getElementById('team-avg-score').textContent = teamAvg + '/100';
+  document.getElementById('team-active-vendors').textContent = activeVendors;
+  document.getElementById('team-need-help').textContent = needHelp;
+
+  // Vendor cards
+  if (profiles.length === 0) {
+    document.getElementById('vendor-grid').innerHTML = '<div class="empty-state"><div class="emoji">👥</div><p>No hay vendedores registrados aún</p></div>';
+    return;
+  }
+
+  const cards = profiles.map(p => {
+    const pSessions = allSessions.filter(s => s.user_id === p.id);
+    const pScores = pSessions.map(s => s.puntaje_total).filter(Boolean);
+    const avg = pScores.length ? Math.round(pScores.reduce((a,b) => a+b, 0) / pScores.length) : 0;
+    const best = pScores.length ? Math.max(...pScores) : 0;
+    const initials = (p.full_name || '?').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+    const avgColor = avg >= 70 ? 'var(--green)' : avg >= 50 ? 'var(--yellow)' : avg > 0 ? 'var(--red)' : 'var(--muted)';
+
+    return `
+      <div class="vendor-card" onclick="showVendorDetail('${p.id}', '${p.full_name}')">
+        <div class="vendor-card-header">
+          <div class="vendor-avatar">${initials}</div>
+          <div>
+            <div class="vendor-name">${p.full_name || 'Sin nombre'}</div>
+            <div class="vendor-meta">${p.country || ''} · ${p.email || ''}</div>
+          </div>
+        </div>
+        <div class="vendor-stats">
+          <div class="vendor-stat">
+            <div class="vendor-stat-value">${pSessions.length}</div>
+            <div class="vendor-stat-label">Sesiones</div>
+          </div>
+          <div class="vendor-stat">
+            <div class="vendor-stat-value" style="color:${avgColor}">${avg || '—'}</div>
+            <div class="vendor-stat-label">Promedio</div>
+          </div>
+          <div class="vendor-stat">
+            <div class="vendor-stat-value">${best || '—'}</div>
+            <div class="vendor-stat-label">Mejor</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('vendor-grid').innerHTML = cards;
+}
+
+async function showVendorDetail(userId, userName) {
+  const { data: sessions } = await sb
+    .from('training_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (!sessions || sessions.length === 0) {
+    showModal(`${userName}`, 'Sin sesiones registradas', '<div class="empty-state"><div class="emoji">📋</div><p>Este vendedor aún no ha practicado</p></div>');
+    return;
+  }
+
+  const scores = sessions.map(s => s.puntaje_total).filter(Boolean);
+  const avg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : 0;
+
+  const spinFields = ['spin_situacion','spin_problema','spin_implicacion','spin_necesidad','manejo_objeciones','cierre'];
+  const spinLabels = ['S-Situación','P-Problema','I-Implicación','N-Necesidad','Objeciones','Cierre'];
+
+  const spinBars = spinFields.map((f, i) => {
+    const vals = sessions.map(s => s[f]).filter(v => v !== null && v !== undefined);
+    const avg = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1) : 0;
+    const pct = (avg / 10) * 100;
+    const color = avg >= 7 ? 'var(--green)' : avg >= 5 ? 'var(--yellow)' : 'var(--red)';
+    return `
+      <div class="spin-bar-row" style="margin-bottom:8px;">
+        <div class="spin-bar-label" style="font-size:11px; width:100px;">${spinLabels[i]}</div>
+        <div class="spin-bar-track"><div class="spin-bar-fill" style="width:${pct}%; background:${color}"></div></div>
+        <div class="spin-bar-value" style="color:${color}; font-size:13px;">${avg}</div>
+      </div>`;
+  }).join('');
+
+  const lastSession = sessions[0];
+  const recentRows = sessions.slice(0,5).map(s => {
+    const sc = s.puntaje_total || 0;
+    const cls = sc >= 70 ? 'good' : sc >= 50 ? 'avg' : 'bad';
+    const date = new Date(s.created_at).toLocaleDateString('es', { day:'2-digit', month:'short' });
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
+        <div>${s.product || '—'} · ${date}</div>
+        <span class="score-badge ${cls}">${sc || '—'}</span>
+      </div>`;
+  }).join('');
+
+  const body = `
+    <div class="feedback-scores" style="margin-bottom:20px;">
+      <div class="fb-score"><div class="fb-score-val">${sessions.length}</div><div class="fb-score-label">Sesiones</div></div>
+      <div class="fb-score"><div class="fb-score-val" style="color:${avg >= 70 ? 'var(--green)' : avg >= 50 ? 'var(--yellow)' : 'var(--red)'}">${avg}</div><div class="fb-score-label">Promedio</div></div>
+      <div class="fb-score"><div class="fb-score-val">${scores.length ? Math.max(...scores) : '—'}</div><div class="fb-score-label">Mejor</div></div>
+    </div>
+    <div style="margin-bottom:20px;">${spinBars}</div>
+    <div style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:8px;">Últimas sesiones</div>
+    ${recentRows}
+    ${lastSession?.areas_mejora ? `<div class="fb-section" style="margin-top:16px;"><div class="fb-section-title red">❌ Última área de mejora</div><div class="fb-text">${lastSession.areas_mejora}</div></div>` : ''}
+    ${lastSession?.recomendaciones ? `<div class="fb-section"><div class="fb-section-title yellow">💡 Última recomendación</div><div class="fb-text">${lastSession.recomendaciones}</div></div>` : ''}
+  `;
+
+  showModal(userName, `${sessions.length} sesiones · Promedio: ${avg}/100`, body);
+}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function showModal(title, subtitle, body) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-subtitle').textContent = subtitle;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+    setTimeout(() => el.innerHTML = '', 5000);
+  }
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════
+     SQL SETUP INSTRUCTIONS (hidden)
+     Run this in Supabase SQL Editor:
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  full_name TEXT,
+  email TEXT,
+  country TEXT,
+  role TEXT DEFAULT 'vendedor',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS training_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id),
+  product TEXT,
+  difficulty TEXT,
+  client_name TEXT,
+  client_country TEXT,
+  client_business TEXT,
+  duration_minutes INTEGER,
+  puntaje_total INTEGER,
+  spin_situacion INTEGER,
+  spin_problema INTEGER,
+  spin_implicacion INTEGER,
+  spin_necesidad INTEGER,
+  manejo_objeciones INTEGER,
+  cierre INTEGER,
+  fortalezas TEXT,
+  areas_mejora TEXT,
+  recomendaciones TEXT,
+  call_summary TEXT,
+  call_successful BOOLEAN,
+  user_sentiment TEXT,
+  retell_call_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users see own profile" ON profiles FOR ALL USING (auth.uid() = id);
+CREATE POLICY "Supervisor sees all profiles" ON profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'supervisor')
+);
+
+CREATE POLICY "Users see own sessions" ON training_sessions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Supervisor sees all sessions" ON training_sessions FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'supervisor')
+);
+═══════════════════════════════════════════════ -->
+
+</body>
+</html>
