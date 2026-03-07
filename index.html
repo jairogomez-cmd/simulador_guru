@@ -1491,14 +1491,12 @@ async function openRetellCall() {
   const container = document.getElementById('retell-container');
 
   try {
-    const resp = await fetch('https://api.retellai.com/v2/create-web-call', {
+    const resp = await fetch('/api/create-call', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RETELL_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        agent_id: RETELL_AGENT_ID,
         metadata: {
           vendor_name: currentProfile?.full_name || '',
           vendor_email: currentUser?.email || '',
