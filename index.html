@@ -1506,12 +1506,10 @@ async function openRetellCall() {
     });
 
     const data = await resp.json();
-    console.log('Register call response:', data);
+    console.log('Retell response:', data);
     
-    if (!data.call_id) throw new Error('No call_id: ' + JSON.stringify(data));
+    if (!data.access_token) throw new Error('Sin token: ' + JSON.stringify(data));
     if (currentSession) currentSession.retellCallId = data.call_id;
-
-    const sampleRate = data.sample_rate || 24000;
 
     // Show active call UI
     container.innerHTML = `
@@ -1531,18 +1529,18 @@ async function openRetellCall() {
         <p style="color:rgba(255,255,255,0.3); font-size:11px; margin-top:4px;">Si el navegador pide permiso de micrófono, haz clic en Permitir</p>
       </div>`;
 
-    // Step 2: Load Retell SDK v1.3.3
+    // Load Retell SDK v2
     await new Promise((res, rej) => {
       if (document.getElementById('retell-umd')) { res(); return; }
       const s = document.createElement('script');
       s.id = 'retell-umd';
-      s.src = 'https://unpkg.com/retell-client-js-sdk@1.3.3/dist/index.umd.js';
+      s.src = 'https://unpkg.com/retell-client-js-sdk@2.0.7/dist/index.umd.js';
       s.onload = res;
       s.onerror = rej;
       document.head.appendChild(s);
     });
 
-    // Step 3: Find RetellWebClient constructor
+    // Find RetellWebClient
     let RetellCls = window.RetellWebClient;
     if (!RetellCls) {
       for (const key of Object.keys(window)) {
@@ -1550,23 +1548,13 @@ async function openRetellCall() {
         if (val?.RetellWebClient) { RetellCls = val.RetellWebClient; break; }
       }
     }
-    if (!RetellCls) throw new Error('RetellWebClient no encontrado');
+    if (!RetellCls) throw new Error('RetellWebClient no encontrado en el SDK');
 
-    // Step 4: Start conversation with callId + sampleRate (v1.x API)
     retellClient = new RetellCls();
-    await retellClient.startConversation({
-      callId: data.call_id,
-      sampleRate: sampleRate,
-      enableUpdate: true
-    });
+    await retellClient.startCall({ accessToken: data.access_token });
 
-    retellClient.on('conversationEnded', () => {
-      console.log('Call ended');
-    });
-
-    retellClient.on('error', (err) => {
-      console.error('Retell error event:', err);
-    });
+    retellClient.on('call_ended', () => console.log('Llamada terminada'));
+    retellClient.on('error', (err) => console.error('Retell error:', err));
 
   } catch(e) {
     console.error('Retell error:', e);
