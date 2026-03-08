@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/create-call.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
-}
