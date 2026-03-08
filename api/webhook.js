@@ -5,19 +5,20 @@ export default async function handler(req, res) {
 
   try {
     const event = req.body;
-    console.log('Retell webhook:', JSON.stringify(event).substring(0, 500));
+    console.log('Retell webhook:', JSON.stringify(event).substring(0, 300));
 
     if (event.event !== 'call_analyzed') {
       return res.status(200).json({ received: true });
     }
 
-    const call = event.data;
+    // Retell sends data in event.call (not event.data)
+    const call = event.call;
     const callId = call?.call_id;
     const analysis = call?.call_analysis;
     const custom = analysis?.custom_analysis_data;
 
     console.log('callId:', callId);
-    console.log('custom data:', JSON.stringify(custom));
+    console.log('custom:', JSON.stringify(custom));
 
     if (!callId) {
       return res.status(200).json({ received: true, note: 'No call_id' });
@@ -27,24 +28,23 @@ export default async function handler(req, res) {
     const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY;
 
     const updates = {
-      puntaje_total:      custom?.puntaje_total      ?? null,
-      spin_situacion:     custom?.spin_situacion      ?? null,
-      spin_problema:      custom?.spin_problema       ?? null,
-      spin_implicacion:   custom?.spin_implicacion    ?? null,
-      spin_necesidad:     custom?.spin_necesidad      ?? null,
-      manejo_objeciones:  custom?.manejo_objeciones   ?? null,
-      cierre:             custom?.cierre              ?? null,
-      fortalezas:         custom?.fortalezas          ?? null,
-      areas_mejora:       custom?.areas_mejora        ?? null,
-      recomendaciones:    custom?.recomendaciones     ?? null,
-      call_summary:       custom?.call_summary        ?? analysis?.call_summary ?? null,
-      call_successful:    custom?.call_successful     ?? analysis?.call_successful ?? null,
-      user_sentiment:     custom?.user_sentiment      ?? analysis?.user_sentiment ?? null,
+      puntaje_total:     custom?.puntaje_total     ?? null,
+      spin_situacion:    custom?.spin_situacion     ?? null,
+      spin_problema:     custom?.spin_problema      ?? null,
+      spin_implicacion:  custom?.spin_implicacion   ?? null,
+      spin_necesidad:    custom?.spin_necesidad     ?? null,
+      manejo_objeciones: custom?.manejo_objeciones  ?? null,
+      cierre:            custom?.cierre             ?? null,
+      fortalezas:        custom?.fortalezas         ?? null,
+      areas_mejora:      custom?.areas_mejora       ?? null,
+      recomendaciones:   custom?.recomendaciones    ?? null,
+      call_summary:      custom?.call_summary       ?? analysis?.call_summary       ?? null,
+      call_successful:   custom?.call_successful    ?? analysis?.call_successful    ?? null,
+      user_sentiment:    custom?.user_sentiment     ?? analysis?.user_sentiment     ?? null,
     };
 
-    console.log('Updates to apply:', JSON.stringify(updates));
+    console.log('Updates:', JSON.stringify(updates));
 
-    // Update via direct fetch (no SDK dependency)
     const url = `${SUPA_URL}/rest/v1/training_sessions?retell_call_id=eq.${callId}`;
     const r = await fetch(url, {
       method: 'PATCH',
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: `Supabase error: ${r.status}`, detail: responseText });
     }
 
-    return res.status(200).json({ success: true, updated: responseText });
+    return res.status(200).json({ success: true });
 
   } catch (error) {
     console.error('Webhook error:', error);
