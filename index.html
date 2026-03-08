@@ -1491,11 +1491,10 @@ async function openRetellCall() {
   const container = document.getElementById('retell-container');
 
   try {
+    // Get access token from our server proxy
     const resp = await fetch('/api/create-call', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         metadata: {
           vendor_name: currentProfile?.full_name || '',
@@ -1507,69 +1506,25 @@ async function openRetellCall() {
     });
 
     const data = await resp.json();
-    if (!data.access_token) throw new Error('No token: ' + JSON.stringify(data));
+    if (!data.access_token) throw new Error('No se obtuvo token: ' + JSON.stringify(data));
     if (currentSession) currentSession.retellCallId = data.call_id;
 
+    // Show active call UI with the Retell embed iframe
     container.innerHTML = `
-      <div style="text-align:center; width:100%;">
-        <div style="font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:16px;">🔴 En llamada con <strong style="color:white">${currentSession.client.name}</strong></div>
-        <div style="display:flex; align-items:center; justify-content:center; gap:5px; height:44px; margin-bottom:14px;">
-          <div style="width:5px; height:20px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0s infinite alternate;"></div>
-          <div style="width:5px; height:32px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.1s infinite alternate;"></div>
-          <div style="width:5px; height:16px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.2s infinite alternate;"></div>
-          <div style="width:5px; height:36px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.3s infinite alternate;"></div>
-          <div style="width:5px; height:24px; background:var(--accent); border-radius:3px; animation:b 0.8s ease-in-out 0.4s infinite alternate;"></div>
+      <div style="width:100%;">
+        <div style="text-align:center; font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:12px;">
+          🔴 En llamada con <strong style="color:white">${currentSession.client.name}</strong>
         </div>
-        <style>@keyframes b{from{transform:scaleY(0.4)}to{transform:scaleY(1)}}</style>
-        <p style="color:rgba(255,255,255,0.5); font-size:13px;">Habla ahora — el cliente te escucha 🎙️</p>
+        <iframe 
+          id="retell-iframe"
+          src="https://app.retellai.com/call-widget?accessToken=${data.access_token}"
+          allow="microphone; camera"
+          style="width:100%; height:180px; border:none; border-radius:10px; background:#000;">
+        </iframe>
+        <p style="text-align:center; color:rgba(255,255,255,0.4); font-size:11px; margin-top:8px;">
+          Si el navegador pide permiso de micrófono, haz clic en "Permitir"
+        </p>
       </div>`;
-
-    // Load Retell SDK v1.3.3 (stable, has startCall method)
-    await new Promise((res, rej) => {
-      if (document.getElementById('retell-umd')) { res(); return; }
-      const s = document.createElement('script');
-      s.id = 'retell-umd';
-      s.src = 'https://unpkg.com/retell-client-js-sdk@1.3.3/dist/index.umd.js';
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-
-    // Find RetellWebClient - v1.3.3 UMD exports as window.RetellWebClient
-    let RetellCls = null;
-    if (typeof window.RetellWebClient === 'function') {
-      RetellCls = window.RetellWebClient;
-    } else {
-      for (const key of Object.keys(window)) {
-        const val = window[key];
-        if (val && typeof val === 'object' && typeof val.RetellWebClient === 'function') {
-          RetellCls = val.RetellWebClient; break;
-        }
-        if (typeof val === 'function' && key.toLowerCase().includes('retell')) {
-          RetellCls = val; break;
-        }
-      }
-    }
-
-    if (!RetellCls) throw new Error('RetellWebClient no encontrado en el SDK.');
-
-    retellClient = new RetellCls();
-    
-    // Find the correct method name on the instance
-    const instanceMethods = Object.getOwnPropertyNames(retellClient)
-      .concat(Object.getOwnPropertyNames(Object.getPrototypeOf(retellClient)));
-    console.log('Instance methods:', instanceMethods);
-    
-    // Try all known Retell method names
-    const startFn = retellClient.startCall || retellClient.start || 
-                    retellClient.startWebCall || retellClient.connect ||
-                    retellClient.startConversation;
-    
-    if (typeof startFn !== 'function') {
-      throw new Error('Métodos en instancia: ' + instanceMethods.join(', '));
-    }
-    
-    await startFn.call(retellClient, { accessToken: data.access_token });
 
   } catch(e) {
     console.error('Retell error:', e);
