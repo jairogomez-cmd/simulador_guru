@@ -45,6 +45,7 @@ const supabase = {
         body: JSON.stringify({ email, password })
       });
       const data = await r.json();
+      console.log('signIn response:', JSON.stringify(data).substring(0,200));
       if (data.access_token) {
         _authToken = data.access_token;
         localStorage.setItem('sb-session', JSON.stringify(data));
@@ -95,7 +96,7 @@ const supabase = {
 
       async then(resolve, reject) {
         try {
-          let url = `${SUPA_URL}/rest/v1/${table}?select=${_select}`;
+          let url = `${SUPA_URL}/rest/v1/${table}?apikey=${SUPA_KEY}&select=${_select}`;
           _filters.forEach(f => url += `&${f}`);
           if (_order) url += `&order=${_order}`;
           if (_limit) url += `&limit=${_limit}`;
@@ -119,7 +120,7 @@ const supabase = {
         return {
           async then(resolve) {
             try {
-              const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+              const r = await fetch(`${SUPA_URL}/rest/v1/${table}?apikey=${SUPA_KEY}`, {
                 method: 'POST',
                 headers: { ...supaHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
                 body: JSON.stringify(body)
@@ -138,7 +139,7 @@ const supabase = {
           single() { return ins; },
           async then(resolve) {
             try {
-              const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+              const r = await fetch(`${SUPA_URL}/rest/v1/${table}?apikey=${SUPA_KEY}`, {
                 method: 'POST',
                 headers: supaHeaders(),
                 body: JSON.stringify(body)
@@ -159,7 +160,7 @@ const supabase = {
             return {
               async then(resolve) {
                 try {
-                  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${col}=eq.${val}`, {
+                  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?apikey=${SUPA_KEY}&${col}=eq.${val}`, {
                     method: 'PATCH',
                     headers: supaHeaders(),
                     body: JSON.stringify(body)
