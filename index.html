@@ -1529,28 +1529,10 @@ async function openRetellCall() {
         <p style="color:rgba(255,255,255,0.3); font-size:11px; margin-top:4px;">Si el navegador pide permiso de micrófono, haz clic en Permitir</p>
       </div>`;
 
-    // Load Retell SDK v2
-    await new Promise((res, rej) => {
-      if (document.getElementById('retell-umd')) { res(); return; }
-      const s = document.createElement('script');
-      s.id = 'retell-umd';
-      s.src = 'https://unpkg.com/retell-client-js-sdk@2.0.7/dist/index.umd.js';
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
+    // Load Retell SDK v2 via ESM (bundles all dependencies automatically)
+    const { RetellWebClient } = await import('https://esm.sh/retell-client-js-sdk@2.0.7');
 
-    // Find RetellWebClient
-    let RetellCls = window.RetellWebClient;
-    if (!RetellCls) {
-      for (const key of Object.keys(window)) {
-        const val = window[key];
-        if (val?.RetellWebClient) { RetellCls = val.RetellWebClient; break; }
-      }
-    }
-    if (!RetellCls) throw new Error('RetellWebClient no encontrado en el SDK');
-
-    retellClient = new RetellCls();
+    retellClient = new RetellWebClient();
     await retellClient.startCall({ accessToken: data.access_token });
 
     retellClient.on('call_ended', () => console.log('Llamada terminada'));
