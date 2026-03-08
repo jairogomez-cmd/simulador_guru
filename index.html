@@ -1524,38 +1524,43 @@ async function openRetellCall() {
         <p style="color:rgba(255,255,255,0.5); font-size:13px;">Habla ahora — el cliente te escucha 🎙️</p>
       </div>`;
 
-    // Load Retell SDK
+    // Load Retell SDK v1.3.3 (stable, has startCall method)
     await new Promise((res, rej) => {
       if (document.getElementById('retell-umd')) { res(); return; }
       const s = document.createElement('script');
       s.id = 'retell-umd';
-      s.src = 'https://unpkg.com/retell-client-js-sdk@2.0.7/dist/index.umd.js';
+      s.src = 'https://unpkg.com/retell-client-js-sdk@1.3.3/dist/index.umd.js';
       s.onload = res;
       s.onerror = rej;
       document.head.appendChild(s);
     });
 
-    // Find the RetellWebClient constructor - try all possible export patterns
-    let RetellSDK = null;
+    // Find RetellWebClient - v1.3.3 UMD exports as window.RetellWebClient
+    let RetellCls = null;
     if (typeof window.RetellWebClient === 'function') {
-      RetellSDK = window.RetellWebClient;
-    } else if (window.RetellClientJsSdk?.RetellWebClient) {
-      RetellSDK = window.RetellClientJsSdk.RetellWebClient;
-    } else if (window.retellClientJsSdk?.RetellWebClient) {
-      RetellSDK = window.retellClientJsSdk.RetellWebClient;
+      RetellCls = window.RetellWebClient;
     } else {
-      // Scan all window keys for RetellWebClient
       for (const key of Object.keys(window)) {
-        if (window[key]?.RetellWebClient) { RetellSDK = window[key].RetellWebClient; break; }
-        if (typeof window[key] === 'function' && key.toLowerCase().includes('retell')) { RetellSDK = window[key]; break; }
+        const val = window[key];
+        if (val && typeof val === 'object' && typeof val.RetellWebClient === 'function') {
+          RetellCls = val.RetellWebClient; break;
+        }
+        if (typeof val === 'function' && key.toLowerCase().includes('retell')) {
+          RetellCls = val; break;
+        }
       }
     }
 
-    if (!RetellSDK) {
-      throw new Error('SDK cargó pero no encontró RetellWebClient. Revisa consola.');
-    }
+    if (!RetellCls) throw new Error('RetellWebClient no encontrado en el SDK.');
 
-    retellClient = new RetellSDK();
+    retellClient = new RetellCls();
+    
+    if (typeof retellClient.startCall !== 'function') {
+      // Log all methods for debugging
+      const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(retellClient));
+      throw new Error('Métodos disponibles: ' + methods.join(', '));
+    }
+    
     await retellClient.startCall({ accessToken: data.access_token });
 
   } catch(e) {
