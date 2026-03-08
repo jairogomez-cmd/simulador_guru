@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const response = await fetch('https://api.retellai.com/v2/create-web-call', {
+    const response = await fetch('https://api.retellai.com/register-call', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RETELL_API_KEY}`,
@@ -16,6 +16,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         agent_id: process.env.RETELL_AGENT_ID,
+        audio_encoding: 'mulaw',
+        audio_websocket_protocol: 'web',
+        sample_rate: 24000,
         metadata: req.body?.metadata || {}
       })
     });
