@@ -1557,6 +1557,16 @@ async function openRetellCall() {
 async function endCall() {
   if (!currentSession) return;
 
+  // Colgar la llamada de Retell
+  try {
+    if (retellClient) {
+      retellClient.stopCall();
+      retellClient = null;
+    }
+  } catch(e) {
+    console.log('stopCall error (ignorado):', e);
+  }
+
   const duration = Math.round((new Date() - currentSession.startTime) / 60000);
 
   // Save session to DB
