@@ -1524,26 +1524,37 @@ async function openRetellCall() {
         <p style="color:rgba(255,255,255,0.5); font-size:13px;">Habla ahora — el cliente te escucha 🎙️</p>
       </div>`;
 
-    // Load Retell SDK from unpkg
-    if (!window.RetellWebClient) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://unpkg.com/retell-client-js-sdk@2.0.7/dist/index.umd.js';
-        s.onload = () => {
-          // SDK may export as RetellWebClient or via module
-          console.log('SDK loaded, window keys with Retell:', Object.keys(window).filter(k => k.toLowerCase().includes('retell')));
-          res();
-        };
-        s.onerror = (e) => { console.error('SDK load error:', e); rej(e); };
-        document.head.appendChild(s);
-      });
+    // Load Retell SDK
+    await new Promise((res, rej) => {
+      if (document.getElementById('retell-umd')) { res(); return; }
+      const s = document.createElement('script');
+      s.id = 'retell-umd';
+      s.src = 'https://unpkg.com/retell-client-js-sdk@2.0.7/dist/index.umd.js';
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
+
+    // Find the RetellWebClient constructor - try all possible export patterns
+    let RetellSDK = null;
+    if (typeof window.RetellWebClient === 'function') {
+      RetellSDK = window.RetellWebClient;
+    } else if (window.RetellClientJsSdk?.RetellWebClient) {
+      RetellSDK = window.RetellClientJsSdk.RetellWebClient;
+    } else if (window.retellClientJsSdk?.RetellWebClient) {
+      RetellSDK = window.retellClientJsSdk.RetellWebClient;
+    } else {
+      // Scan all window keys for RetellWebClient
+      for (const key of Object.keys(window)) {
+        if (window[key]?.RetellWebClient) { RetellSDK = window[key].RetellWebClient; break; }
+        if (typeof window[key] === 'function' && key.toLowerCase().includes('retell')) { RetellSDK = window[key]; break; }
+      }
     }
-    
-    // Try different export patterns
-    const RetellSDK = window.RetellWebClient || window.retellWebClient || (window.RetellClientJsSdk && window.RetellClientJsSdk.RetellWebClient);
+
     if (!RetellSDK) {
-      throw new Error('SDK no disponible. Usa el botón de Retell directo.');
+      throw new Error('SDK cargó pero no encontró RetellWebClient. Revisa consola.');
     }
+
     retellClient = new RetellSDK();
     await retellClient.startCall({ accessToken: data.access_token });
 
