@@ -1555,13 +1555,21 @@ async function openRetellCall() {
 
     retellClient = new RetellCls();
     
-    if (typeof retellClient.startCall !== 'function') {
-      // Log all methods for debugging
-      const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(retellClient));
-      throw new Error('Métodos disponibles: ' + methods.join(', '));
+    // Find the correct method name on the instance
+    const instanceMethods = Object.getOwnPropertyNames(retellClient)
+      .concat(Object.getOwnPropertyNames(Object.getPrototypeOf(retellClient)));
+    console.log('Instance methods:', instanceMethods);
+    
+    // Try all known Retell method names
+    const startFn = retellClient.startCall || retellClient.start || 
+                    retellClient.startWebCall || retellClient.connect ||
+                    retellClient.startConversation;
+    
+    if (typeof startFn !== 'function') {
+      throw new Error('Métodos en instancia: ' + instanceMethods.join(', '));
     }
     
-    await retellClient.startCall({ accessToken: data.access_token });
+    await startFn.call(retellClient, { accessToken: data.access_token });
 
   } catch(e) {
     console.error('Retell error:', e);
