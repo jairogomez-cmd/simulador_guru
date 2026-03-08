@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const sb = createClient(
   'https://dhyzfnxygadkkniubrge.supabase.co',
-  process.env.SUPABASE_SECRET_KEY
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 export default async function handler(req, res) {
