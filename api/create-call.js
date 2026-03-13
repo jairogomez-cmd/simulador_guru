@@ -7,6 +7,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    // Read metadata sent from the HTML
+    const body = req.body || {};
+    const metadata = body.metadata || {};
+
     const response = await fetch('https://api.retellai.com/v2/create-web-call', {
       method: 'POST',
       headers: {
@@ -14,25 +18,29 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        agent_id: process.env.RETELL_AGENT_ID
+        agent_id: process.env.RETELL_AGENT_ID,
+        metadata: metadata,
+        // Pass client profile as dynamic variables so {{client_name}} etc work in prompt
+        retell_llm_dynamic_variables: {
+          client_name:     metadata.client_name     || '',
+          client_business: metadata.client_business || '',
+          client_country:  metadata.client_country  || '',
+          client_status:   metadata.client_status   || '',
+          difficulty:      metadata.difficulty      || 'medio',
+          vendor_name:     metadata.vendor_name     || '',
+          product:         metadata.product         || ''
+        }
       })
     });
 
     const text = await response.text();
-    console.log('Retell raw response:', text);
-
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch(e) {
-      console.error('Retell returned non-JSON:', text.substring(0, 200));
-      return res.status(500).json({ error: 'Retell returned invalid response', raw: text.substring(0, 200) });
-    }
+    try { data = JSON.parse(text); }
+    catch(e) { return res.status(500).json({ error: 'Retell returned invalid response', raw: text.substring(0,200) }); }
 
     return res.status(response.status).json(data);
 
   } catch (error) {
-    console.error('Retell proxy error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
