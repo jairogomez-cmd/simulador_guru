@@ -1766,25 +1766,47 @@ function filterCharts(range) {
 // PRACTICE
 // ════════════════════════════════════════
 const clientProfiles = {
-  Argentina:['Marcelo Fernández','Claudia Gómez','Roberto Sánchez'],
-  Chile:['Rodrigo Muñoz','Catalina Pérez','Felipe Morales'],
-  Colombia:['Andrés Rodríguez','Paola García','Carlos Martínez'],
-  Perú:['José Quispe','Carmen Flores','Luis Mendoza'],
-  Ecuador:['Pablo Mora','Gabriela Espinoza','Miguel Herrera'],
-  Panamá:['Tomás Núñez','Lorena Díaz','Ricardo Pinto'],
-  Guatemala:['Juan Ajú','María Revolorio','Carlos Chávez'],
-  'El Salvador':['Óscar Rivas','Teresa Aguilar','Ernesto Fuentes'],
-  Nicaragua:['Luis Centeno','Miriam Ortega','Rodrigo Espino'],
+  Argentina:['Marcelo Fernández','Roberto Sánchez','Gustavo Pereyra'],
+  Chile:['Rodrigo Muñoz','Felipe Morales','Sebastián Vargas'],
+  Colombia:['Andrés Rodríguez','Carlos Martínez','Juan Ospina'],
+  Perú:['José Quispe','Luis Mendoza','Raúl Ccari'],
+  Ecuador:['Pablo Mora','Miguel Herrera','Diego Andrade'],
+  Panamá:['Tomás Núñez','Ricardo Pinto','Alejandro Batista'],
+  Guatemala:['Juan Ajú','Carlos Chávez','Mario Cifuentes'],
+  'El Salvador':['Óscar Rivas','Ernesto Fuentes','Rafael Mejía'],
+  Nicaragua:['Luis Centeno','Rodrigo Espino','Manuel Chavarría'],
 };
-const businessTypes = ['Restaurante','Clínica','Tienda de ropa','Ferretería','Gimnasio','Peluquería','Inmobiliaria','Farmacia'];
-const bizEmoji = { 'Restaurante':'🍽️','Clínica':'🏥','Tienda de ropa':'👗','Ferretería':'🔧','Gimnasio':'💪','Peluquería':'✂️','Inmobiliaria':'🏠','Farmacia':'💊' };
+const businessTypes = [
+  'Restaurante','Clínica dental','Ferretería','Gimnasio',
+  'Tienda de ropa','Constructora','Distribuidora de alimentos',
+  'Empresa de logística','Despacho contable','Tienda online',
+  'Empresa de limpieza','Concesionario de autos','Hotel boutique',
+  'Academia de idiomas','Clínica veterinaria','Farmacia',
+  'Agencia de turismo','Empresa de seguridad','Spa y estética'
+];
+const bizEmoji = {
+  'Restaurante':'🍽️','Clínica dental':'🦷','Ferretería':'🔧','Gimnasio':'💪',
+  'Tienda de ropa':'👔','Constructora':'🏗️','Distribuidora de alimentos':'🥫',
+  'Empresa de logística':'🚚','Despacho contable':'📊','Tienda online':'🛒',
+  'Empresa de limpieza':'🧹','Concesionario de autos':'🚗','Hotel boutique':'🏨',
+  'Academia de idiomas':'📚','Clínica veterinaria':'🐾','Farmacia':'💊',
+  'Agencia de turismo':'✈️','Empresa de seguridad':'🔒','Spa y estética':'💆'
+};
 
 function generateClient() {
   const countries = Object.keys(clientProfiles);
   const country   = countries[~~(Math.random()*countries.length)];
   const name      = clientProfiles[country][~~(Math.random()*3)];
   const business  = businessTypes[~~(Math.random()*businessTypes.length)];
-  return { name, country, business, emoji: bizEmoji[business] || '👤' };
+  const statuses  = [
+    'Lleva 2-5 años en el mercado y nunca ha hecho marketing digital',
+    'Tiene presencia básica en redes pero sin estrategia clara',
+    'Tuvo una mala experiencia con otra agencia digital',
+    'Está creciendo rápido y necesita escalar',
+    'Está perdiendo clientes frente a competidores más digitales'
+  ];
+  const status = statuses[~~(Math.random()*statuses.length)];
+  return { name, country, business, status, emoji: bizEmoji[business] || '👤' };
 }
 
 function selectDiff(el, diff) {
@@ -1827,7 +1849,16 @@ async function openRetellCall() {
   try {
     const resp = await fetch('/api/create-call', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ metadata: { vendor_name:currentProfile?.full_name||'', vendor_email:currentUser?.email||'', product:currentSession?.product||'', client_name:currentSession?.client?.name||'' } })
+      body:JSON.stringify({ metadata: {
+        vendor_name:     currentProfile?.full_name   || '',
+        vendor_email:    currentUser?.email          || '',
+        product:         currentSession?.product     || '',
+        client_name:     currentSession?.client?.name     || '',
+        client_business: currentSession?.client?.business || '',
+        client_country:  currentSession?.client?.country  || '',
+        client_status:   currentSession?.client?.status   || '',
+        difficulty:      currentSession?.difficulty        || 'medio'
+      } })
     });
     const data = await resp.json();
     if (!data.access_token) throw new Error('Sin token: '+JSON.stringify(data));
