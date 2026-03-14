@@ -1375,20 +1375,18 @@ window.onload = async () => {
     const params = new URLSearchParams(hash.substring(1));
     const access_token = params.get('access_token');
     const refresh_token = params.get('refresh_token');
+    const expires_in = params.get('expires_in') || 3600;
     if (access_token) {
-      // Guardar sesión en localStorage igual que el login normal
-      const sessionData = { access_token, refresh_token };
-      // Obtener info del usuario
       try {
         const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
           headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${access_token}` }
         });
         const userData = await res.json();
         if (userData.id) {
-          sessionData.user = userData;
+          const expires_at = Math.floor(Date.now() / 1000) + parseInt(expires_in);
+          const sessionData = { access_token, refresh_token, expires_at, user: userData };
           _authToken = access_token;
           localStorage.setItem('sb-session', JSON.stringify(sessionData));
-          // Limpiar la URL sin recargar
           window.history.replaceState({}, document.title, window.location.pathname);
           await loadUserProfile(userData);
           showApp();
@@ -1398,12 +1396,44 @@ window.onload = async () => {
     }
   }
 
-  // Login normal — revisar sesión guardada
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    await loadUserProfile(session.user);
-    showApp();
+  // Revisar sesión guardada en localStorage
+  const raw = localStorage.getItem('sb-session');
+  if (raw) {
+    try {
+      const session = JSON.parse(raw);
+      const now = Math.floor(Date.now() / 1000);
+      // Si el token no ha expirado, entrar directo
+      if (session?.access_token && session?.expires_at && session.expires_at > now) {
+        _authToken = session.access_token;
+        if (session.user) {
+          await loadUserProfile(session.user);
+          showApp();
+          return;
+        }
+      }
+      // Si expiró, intentar refrescar con refresh_token
+      if (session?.refresh_token) {
+        try {
+          const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+            method: 'POST',
+            headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: session.refresh_token })
+          });
+          const newSession = await r.json();
+          if (newSession?.access_token) {
+            const expires_at = Math.floor(Date.now() / 1000) + (newSession.expires_in || 3600);
+            const updatedSession = { ...newSession, expires_at };
+            _authToken = newSession.access_token;
+            localStorage.setItem('sb-session', JSON.stringify(updatedSession));
+            await loadUserProfile(newSession.user || session.user);
+            showApp();
+            return;
+          }
+        } catch(e) { console.error('Error refrescando token:', e); }
+      }
+    } catch(e) { localStorage.removeItem('sb-session'); }
   }
+  // Si no hay sesión válida, mostrar pantalla de login
 };
 
 // ════════════════════════════════════════
