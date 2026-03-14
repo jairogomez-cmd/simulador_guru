@@ -811,10 +811,15 @@ body::before {
         </div>
         <button class="btn-primary" onclick="handleLogin()" id="btn-login">Ingresar →</button>
         <div class="form-alert" id="login-alert"></div>
+        
         <div class="form-divider">¿Primera vez aquí?</div>
         <button class="btn-ghost" onclick="showRegister()">Crear cuenta nueva</button>
       </div>
-
+<div class="form-divider">acceso corporativo</div>
+<button class="btn-primary" onclick="loginConGoogle()" style="background:#fff;color:#3c4043;border:1.5px solid #dadce0;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;">
+  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
+  <span style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;color:#3c4043;">Entrar con Google @gurusoluciones.com</span>
+</button>
       <!-- Register form -->
       <div id="register-form" style="display:none">
         <div class="form-group">
@@ -1356,11 +1361,14 @@ let currentProfile = null;
 let currentSession = null;
 let selectedDiff   = 'facil';
 let retellClient   = null;
-
+async function loginConGoogle() {
+  window.location.href = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(window.location.origin + window.location.pathname)}`;
+}
 // ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
-window.onload = async () => {
+
+  window.onload = async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile(session.user);
