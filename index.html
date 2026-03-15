@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
 const SUPA_URL = 'https://dhyzfnxygadkkniubrge.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeXpmbnh5Z2Fka2tuaXVicmdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDM5MDYsImV4cCI6MjA4ODQ3OTkwNn0.sXNJTSxt0hIePRj3S5NFuKkeBfowetcnBiA58MUmwNg';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeXpmbnh5Z2Fka2tuaXVicmdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDM5MDYsImV4cCI6MjA4ODQ3OTkwNn0.sXNJTSxt0hIePRj3S5NFuKkeBfowetcnBiA58MUmwNg'; // Clave pública anon de Supabase — segura para el frontend
 let _authToken = SUPA_KEY;
 function supaHeaders(token){return{'apikey':SUPA_KEY,'Authorization':`Bearer ${token||_authToken}`,'Content-Type':'application/json','Prefer':'return=representation'};}
 const supabase={
@@ -812,6 +812,8 @@ body::before {
         <button class="btn-primary" onclick="handleLogin()" id="btn-login">Ingresar →</button>
         <div class="form-alert" id="login-alert"></div>
         
+        <div class="form-divider">¿Primera vez aquí?</div>
+        <button class="btn-ghost" onclick="showRegister()">Crear cuenta nueva</button>
       </div>
 <div class="form-divider">acceso corporativo</div>
 <button class="btn-primary" onclick="loginConGoogle()" style="background:#fff;color:#3c4043;border:1.5px solid #dadce0;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;">
@@ -1350,8 +1352,10 @@ body::before {
 // ════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════
-const RETELL_AGENT_ID = 'agent_1bc5bb582accc4feb2819b3a4b';
-const RETELL_API_KEY  = 'key_049416487fa0ea10f93b8ae81c0f';
+// Las keys de Retell se manejan en el servidor (api/create-call.js)
+// No se exponen en el frontend
+const RETELL_AGENT_ID = ''; // Manejado en el servidor
+const RETELL_API_KEY  = ''; // Manejado en el servidor
 const SUPERVISOR_EMAIL = 'jairo.gomez@gurusoluciones.com';
 
 let currentUser    = null;
@@ -1366,72 +1370,12 @@ async function loginConGoogle() {
 // INIT
 // ════════════════════════════════════════
 
-window.onload = async () => {
-  // Detectar si Google regresó con un token en la URL
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.substring(1));
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-    const expires_in = params.get('expires_in') || 3600;
-    if (access_token) {
-      try {
-        const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
-          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${access_token}` }
-        });
-        const userData = await res.json();
-        if (userData.id) {
-          const expires_at = Math.floor(Date.now() / 1000) + parseInt(expires_in);
-          const sessionData = { access_token, refresh_token, expires_at, user: userData };
-          _authToken = access_token;
-          localStorage.setItem('sb-session', JSON.stringify(sessionData));
-          window.history.replaceState({}, document.title, window.location.pathname);
-          await loadUserProfile(userData);
-          showApp();
-          return;
-        }
-      } catch(e) { console.error('Error procesando token Google:', e); }
-    }
+  window.onload = async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
+    showApp();
   }
-
-  // Revisar sesión guardada en localStorage
-  const raw = localStorage.getItem('sb-session');
-  if (raw) {
-    try {
-      const session = JSON.parse(raw);
-      const now = Math.floor(Date.now() / 1000);
-      // Si el token no ha expirado, entrar directo
-      if (session?.access_token && session?.expires_at && session.expires_at > now) {
-        _authToken = session.access_token;
-        if (session.user) {
-          await loadUserProfile(session.user);
-          showApp();
-          return;
-        }
-      }
-      // Si expiró, intentar refrescar con refresh_token
-      if (session?.refresh_token) {
-        try {
-          const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
-            method: 'POST',
-            headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: session.refresh_token })
-          });
-          const newSession = await r.json();
-          if (newSession?.access_token) {
-            const expires_at = Math.floor(Date.now() / 1000) + (newSession.expires_in || 3600);
-            const updatedSession = { ...newSession, expires_at };
-            _authToken = newSession.access_token;
-            localStorage.setItem('sb-session', JSON.stringify(updatedSession));
-            await loadUserProfile(newSession.user || session.user);
-            showApp();
-            return;
-          }
-        } catch(e) { console.error('Error refrescando token:', e); }
-      }
-    } catch(e) { localStorage.removeItem('sb-session'); }
-  }
-  // Si no hay sesión válida, mostrar pantalla de login
 };
 
 // ════════════════════════════════════════
