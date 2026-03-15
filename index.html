@@ -812,8 +812,6 @@ body::before {
         <button class="btn-primary" onclick="handleLogin()" id="btn-login">Ingresar →</button>
         <div class="form-alert" id="login-alert"></div>
         
-        <div class="form-divider">¿Primera vez aquí?</div>
-        <button class="btn-ghost" onclick="showRegister()">Crear cuenta nueva</button>
       </div>
 <div class="form-divider">acceso corporativo</div>
 <button class="btn-primary" onclick="loginConGoogle()" style="background:#fff;color:#3c4043;border:1.5px solid #dadce0;box-shadow:0 1px 3px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;">
@@ -1370,12 +1368,72 @@ async function loginConGoogle() {
 // INIT
 // ════════════════════════════════════════
 
-  window.onload = async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    await loadUserProfile(session.user);
-    showApp();
+window.onload = async () => {
+  // PASO 1 — Detectar si Google regresó con token en la URL
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const expires_in = params.get('expires_in') || 3600;
+    if (access_token) {
+      try {
+        const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${access_token}` }
+        });
+        const userData = await res.json();
+        if (userData.id) {
+          const expires_at = Math.floor(Date.now() / 1000) + parseInt(expires_in);
+          const sessionData = { access_token, refresh_token, expires_at, user: userData };
+          _authToken = access_token;
+          localStorage.setItem('sb-session', JSON.stringify(sessionData));
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await loadUserProfile(userData);
+          showApp();
+          return;
+        }
+      } catch(e) { console.error('Error procesando token Google:', e); }
+    }
   }
+
+  // PASO 2 — Revisar sesión guardada en localStorage
+  const raw = localStorage.getItem('sb-session');
+  if (raw) {
+    try {
+      const session = JSON.parse(raw);
+      const now = Math.floor(Date.now() / 1000);
+      // Token vigente — entrar directo
+      if (session?.access_token && session?.expires_at && session.expires_at > now) {
+        _authToken = session.access_token;
+        if (session.user) {
+          await loadUserProfile(session.user);
+          showApp();
+          return;
+        }
+      }
+      // Token expirado — refrescar automáticamente
+      if (session?.refresh_token) {
+        try {
+          const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+            method: 'POST',
+            headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: session.refresh_token })
+          });
+          const newSession = await r.json();
+          if (newSession?.access_token) {
+            const expires_at = Math.floor(Date.now() / 1000) + (newSession.expires_in || 3600);
+            const updatedSession = { ...newSession, expires_at };
+            _authToken = newSession.access_token;
+            localStorage.setItem('sb-session', JSON.stringify(updatedSession));
+            await loadUserProfile(newSession.user || session.user);
+            showApp();
+            return;
+          }
+        } catch(e) { console.error('Error refrescando token:', e); }
+      }
+    } catch(e) { localStorage.removeItem('sb-session'); }
+  }
+  // Sin sesión válida — mostrar pantalla de login
 };
 
 // ════════════════════════════════════════
