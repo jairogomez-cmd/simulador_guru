@@ -1354,6 +1354,7 @@ body::before {
 // No se exponen en el frontend
 const RETELL_AGENT_ID = ''; // Manejado en el servidor
 const RETELL_API_KEY  = ''; // Manejado en el servidor
+const API_BASE = 'https://app.gurusoluciones.io/api_guru';
 const SUPERVISOR_EMAIL = 'jairo.gomez@gurusoluciones.com';
 
 let currentUser    = null;
@@ -1463,7 +1464,11 @@ async function handleRegister() {
   if (error) { showAlert('register-alert', error.message, 'error'); return; }
   if (data.user) {
     const isSup = email === SUPERVISOR_EMAIL;
-    await sb.from('profiles').upsert({ id:data.user.id, full_name:name, email, country, role:isSup?'supervisor':'vendedor', created_at:new Date().toISOString() });
+    await fetch(`${API_BASE}/upsert_profile.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id:data.user.id, full_name:name, email, country, role:isSup?'supervisor':'vendedor', created_at:new Date().toISOString() })
+    });
     await loadUserProfile(data.user);
     showApp();
   }
@@ -1471,15 +1476,22 @@ async function handleRegister() {
 
 async function loadUserProfile(user) {
   currentUser = user;
-  const { data } = await sb.from('profiles').select('*').eq('id', user.id).limit(1);
-  const profileData = Array.isArray(data) ? data[0] : data;
-  if (profileData) {
-    currentProfile = profileData;
-  } else {
-    const isSup = user.email === SUPERVISOR_EMAIL;
-    const profile = { id:user.id, full_name:user.email.split('@')[0], email:user.email, country:'Colombia', role:isSup?'supervisor':'vendedor', created_at:new Date().toISOString() };
-    await sb.from('profiles').upsert(profile);
-    currentProfile = profile;
+  try {
+    // Buscar perfil en MySQL de Hostinger
+    const res = await fetch(`${API_BASE}/auth.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, name: user.user_metadata?.full_name || user.email.split('@')[0] })
+    });
+    const json = await res.json();
+    if (json.data) {
+      currentProfile = json.data;
+    } else {
+      currentProfile = { id: user.id, full_name: user.email.split('@')[0], email: user.email, country: 'Colombia', role: user.email === SUPERVISOR_EMAIL ? 'supervisor' : 'vendedor' };
+    }
+  } catch(e) {
+    console.error('Error cargando perfil:', e);
+    currentProfile = { id: user.id, full_name: user.email.split('@')[0], email: user.email, country: 'Colombia', role: 'vendedor' };
   }
 }
 
@@ -1570,7 +1582,14 @@ function getLevel(xp) {
 
 async function loadDashboard() {
   if (!currentUser) return;
-  const { data: sessions } = await sb.from('training_sessions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  // Cargar sesiones desde MySQL de Hostinger
+  let sessions = [];
+  try {
+    const res = await fetch(`${API_BASE}/get_sessions.php?user_id=${currentUser.id}&role=${currentProfile?.role || 'vendedor'}`);
+    const json = await res.json();
+    sessions = json.data || [];
+  } catch(e) { console.error('Error cargando sesiones:', e); sessions = []; }
+  const sessionsData = sessions;
 
   if (!sessions || sessions.length === 0) {
     document.getElementById('stat-sessions').textContent = '0';
@@ -1973,7 +1992,14 @@ async function endCall() {
     user_sentiment: null, retell_call_id: currentSession.retellCallId || null,
     created_at: new Date().toISOString()
   };
-  await sb.from('training_sessions').insert(sessionData);
+  // Guardar sesión en MySQL de Hostinger
+  try {
+    await fetch(`${API_BASE}/insert_session.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionData)
+    });
+  } catch(e) { console.error('Error guardando sesión:', e); }
 
   showModal('✅ Sesión registrada', `${duration} min · ${currentSession.client.name}`, `
     <div class="fb-text" style="margin-bottom:16px;border-left:3px solid var(--cyan);">
@@ -2008,14 +2034,12 @@ async function loadHistory() {
   if (!currentUser) return;
   document.getElementById('history-body').innerHTML = '<div class="loading"><div class="ld"></div><div class="ld"></div><div class="ld"></div></div>';
 
-  let sessions;
-  if (currentProfile?.role === 'supervisor') {
-    const { data } = await sb.from('training_sessions').select('*').order('created_at',{ascending:false}).limit(200);
-    sessions = data;
-  } else {
-    const { data } = await sb.from('training_sessions').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false});
-    sessions = data;
-  }
+  let sessions = [];
+  try {
+    const res = await fetch(`${API_BASE}/get_sessions.php?user_id=${currentUser.id}&role=${currentProfile?.role || 'vendedor'}&limit=200`);
+    const json = await res.json();
+    sessions = json.data || [];
+  } catch(e) { console.error('Error cargando historial:', e); sessions = []; }
 
   document.getElementById('history-count').textContent = sessions?.length ? `${sessions.length} sesiones` : '0 sesiones';
 
@@ -2116,10 +2140,17 @@ async function showSessionDetail(id) {
 async function loadSupervisor() {
   if (!currentUser) return;
 
-  const [{ data: profiles }, { data: allSessions }] = await Promise.all([
-    sb.from('profiles').select('*').order('full_name',{ascending:true}),
-    sb.from('training_sessions').select('*').order('created_at',{ascending:false})
-  ]);
+  let profiles = [], allSessions = [];
+  try {
+    const [resP, resS] = await Promise.all([
+      fetch(`${API_BASE}/get_all_profiles.php`),
+      fetch(`${API_BASE}/get_sessions.php?role=supervisor&limit=500`)
+    ]);
+    const jsonP = await resP.json();
+    const jsonS = await resS.json();
+    profiles   = jsonP.data || [];
+    allSessions = jsonS.data || [];
+  } catch(e) { console.error('Error cargando supervisor:', e); }
 
   if (!profiles?.length) {
     document.getElementById('vendor-grid').innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">Sin vendedores registrados</div></div>';
@@ -2180,7 +2211,12 @@ async function loadSupervisor() {
 }
 
 async function showVendorDetail(userId, userName) {
-  const { data: sessions } = await sb.from('training_sessions').select('*').eq('user_id',userId).order('created_at',{ascending:false});
+  let sessions = [];
+  try {
+    const res = await fetch(`${API_BASE}/get_sessions.php?user_id=${userId}&role=vendedor`);
+    const json = await res.json();
+    sessions = json.data || [];
+  } catch(e) { sessions = []; }
   if (!sessions?.length) {
     showModal(userName, 'Sin sesiones aún', '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Este vendedor no ha practicado todavía</div></div>');
     return;
