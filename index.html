@@ -1370,7 +1370,26 @@ async function loginConGoogle() {
 // ════════════════════════════════════════
 
 window.onload = async () => {
-  // PASO 1 — Detectar si Google regresó con token en la URL
+  // PASO 1 — Leer usuario de app.gurusoluciones.io (sessionStorage)
+  const guruUser = sessionStorage.getItem('guruUser');
+  if (guruUser) {
+    try {
+      const userData = JSON.parse(guruUser);
+      if (userData?.email) {
+        const fakeUser = {
+          id: null,
+          email: userData.email,
+          name: userData.name || userData.email.split('@')[0],
+          user_metadata: { full_name: userData.name || userData.email.split('@')[0] }
+        };
+        await loadUserProfile(fakeUser);
+        showApp();
+        return;
+      }
+    } catch(e) { console.error('Error leyendo guruUser:', e); }
+  }
+
+  // PASO 2 — Detectar si Google regresó con token en la URL
   const hash = window.location.hash;
   if (hash && hash.includes('access_token')) {
     const params = new URLSearchParams(hash.substring(1));
@@ -1477,21 +1496,24 @@ async function handleRegister() {
 async function loadUserProfile(user) {
   currentUser = user;
   try {
-    // Buscar perfil en MySQL de Hostinger
+    const name = user.user_metadata?.full_name || user.name || user.email?.split('@')[0] || '';
     const res = await fetch(`${API_BASE}/auth.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.email, name: user.user_metadata?.full_name || user.email.split('@')[0] })
+      body: JSON.stringify({ email: user.email, name: name })
     });
     const json = await res.json();
     if (json.data) {
       currentProfile = json.data;
+      // Usar el id de MySQL como user_id
+      if (!currentUser.id) currentUser.id = json.data.id;
     } else {
-      currentProfile = { id: user.id, full_name: user.email.split('@')[0], email: user.email, country: 'Colombia', role: user.email === SUPERVISOR_EMAIL ? 'supervisor' : 'vendedor' };
+      currentProfile = { id: user.id, full_name: name, email: user.email, country: 'Colombia', role: user.email === SUPERVISOR_EMAIL ? 'supervisor' : 'vendedor' };
+      if (!currentUser.id) currentUser.id = currentProfile.id;
     }
   } catch(e) {
     console.error('Error cargando perfil:', e);
-    currentProfile = { id: user.id, full_name: user.email.split('@')[0], email: user.email, country: 'Colombia', role: 'vendedor' };
+    currentProfile = { id: user.id, full_name: user.email?.split('@')[0], email: user.email, country: 'Colombia', role: 'vendedor' };
   }
 }
 
